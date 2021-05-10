@@ -8,7 +8,7 @@
 
 import Foundation
 
-#if os(iOS)  || os(tvOS)
+#if os(iOS) || os(tvOS)
     import UIKit
     public typealias OAuthViewController = UIViewController
 #elseif os(watchOS)
@@ -20,7 +20,7 @@ import Foundation
 #endif
 
 /// Delegate for OAuthWebViewController
-public protocol OAuthWebViewControllerDelegate: class {
+public protocol OAuthWebViewControllerDelegate: AnyObject {
 
     #if os(iOS) || os(tvOS)
     /// Did web view presented (work only without navigation controller)
@@ -35,7 +35,7 @@ public protocol OAuthWebViewControllerDelegate: class {
     func oauthWebViewControllerDidDisappear()
 }
 
-/// A web view controller, which handler OAuthSwift authentification.
+/// A web view controller, which handler OAuthSwift authentification. Must be override to display a web view.
 open class OAuthWebViewController: OAuthViewController, OAuthSwiftURLHandlerType {
 
     #if os(iOS) || os(tvOS) || os(OSX)
@@ -64,7 +64,7 @@ open class OAuthWebViewController: OAuthViewController, OAuthSwiftURLHandlerType
     public enum Present {
         case asModalWindow
         case asSheet
-        case asPopover(relativeToRect: NSRect, ofView : NSView, preferredEdge: NSRectEdge, behavior: NSPopover.Behavior)
+        case asPopover(relativeToRect: NSRect, ofView: NSView, preferredEdge: NSRectEdge, behavior: NSPopover.Behavior)
         case transitionFrom(fromViewController: NSViewController, options: NSViewController.TransitionOptions)
         case animator(animator: NSViewControllerPresentationAnimator)
         case segue(segueIdentifier: String)
@@ -84,6 +84,7 @@ open class OAuthWebViewController: OAuthViewController, OAuthSwiftURLHandlerType
     #endif
 
     open func doHandle(_ url: URL) {
+        OAuthSwift.log?.trace("OAuthWebViewController: present Safari view controller, url: \(url)")
         #if os(iOS) || os(tvOS)
             let completion: () -> Void = { [unowned self] in
                 self.delegate?.oauthWebViewControllerDidPresent()
@@ -106,21 +107,21 @@ open class OAuthWebViewController: OAuthViewController, OAuthSwiftURLHandlerType
             if let p = self.parent { // default behaviour if this controller affected as child controller
                 switch self.present {
                 case .asSheet:
-                    p.presentViewControllerAsSheet(self)
+                    p.presentAsSheet(self)
                 case .asModalWindow:
-                    p.presentViewControllerAsModalWindow(self)
+                    p.presentAsModalWindow(self)
                     // FIXME: if we present as window, window close must detected and oauthswift.cancel() must be called...
                 case .asPopover(let positioningRect, let positioningView, let preferredEdge, let behavior):
-                    p.presentViewController(self, asPopoverRelativeTo: positioningRect, of: positioningView, preferredEdge: preferredEdge, behavior: behavior)
+                    p.present(self, asPopoverRelativeTo: positioningRect, of: positioningView, preferredEdge: preferredEdge, behavior: behavior)
                 case .transitionFrom(let fromViewController, let options):
                     let completion: () -> Void = { /*[unowned self] in*/
-                        //self.delegate?.oauthWebViewControllerDidPresent()
+                        // self.delegate?.oauthWebViewControllerDidPresent()
                     }
                     p.transition(from: fromViewController, to: self, options: options, completionHandler: completion)
                 case .animator(let animator):
-                    p.presentViewController(self, animator: animator)
+                    p.present(self, animator: animator)
                 case .segue(let segueIdentifier):
-                    p.performSegue(withIdentifier: NSStoryboardSegue.Identifier(rawValue: segueIdentifier), sender: self) // The segue must display self.view
+                    p.performSegue(withIdentifier: segueIdentifier, sender: self) // The segue must display self.view
                 }
             } else if let window = self.view.window {
                 window.makeKeyAndOrderFront(nil)
@@ -132,6 +133,8 @@ open class OAuthWebViewController: OAuthViewController, OAuthSwiftURLHandlerType
     }
 
     open func dismissWebViewController() {
+        OAuthSwift.log?.trace("OAuthWebViewController: dismiss view controller")
+
         #if os(iOS) || os(tvOS)
             let completion: () -> Void = { [unowned self] in
                 self.delegate?.oauthWebViewControllerDidDismiss()
@@ -150,10 +153,10 @@ open class OAuthWebViewController: OAuthViewController, OAuthSwiftURLHandlerType
         #elseif os(watchOS)
             self.dismiss()
         #elseif os(OSX)
-            if self.presenting != nil {
+        if self.presentingViewController != nil {
                 self.dismiss(nil)
                 if self.parent != nil {
-                    self.removeFromParentViewController()
+                    self.removeFromParent()
                 }
             } else if let window = self.view.window {
                 window.performClose(nil)

@@ -18,12 +18,26 @@ class OAuthSwiftErrorTest: XCTestCase {
 				"WWW-Authenticate": "Bearer realm=\"example\", error=\"invalid_token\", error_description=\"The access token expired\""
 			]
 		]
-		let error = NSError(domain: NSURLErrorDomain, code: 401, userInfo: userInfo)
+		let error = NSError(domain: OAuthSwiftError.Domain, code: 401, userInfo: userInfo)
 
 		// assert
 		XCTAssertTrue(error.isExpiredToken)
         XCTAssertTrue(((error as Error) as NSError).isExpiredToken)
 	}
+
+    func testDetectInvalidTokenFromTwitter() {
+        // given
+        let userInfo = [
+            NSURLErrorFailingURLErrorKey: "https://api.twitter.com/1.1/account/verify_credentials.json",
+            "Response-Body": "{\"errors\":[{\"code\":89,\"message\":\"Invalid or expired token.\"}]}"
+        ]
+        // Twitter error details are here: https://developer.twitter.com/en/docs/basics/response-codes
+        let error = NSError(domain: OAuthSwiftError.Domain, code: 401, userInfo: userInfo)
+
+        // assert
+        XCTAssertTrue(error.isExpiredToken)
+        XCTAssertTrue(((error as Error) as NSError).isExpiredToken)
+    }
 
     func testDetectInvalidTokensFromFacebook() {
         // given
@@ -39,13 +53,13 @@ class OAuthSwiftErrorTest: XCTestCase {
         }
 
         // assert
-        XCTAssertTrue(NSError(domain: NSURLErrorDomain, code: 400, userInfo: createUserInfo(102, nil)).isExpiredToken)
-        XCTAssertTrue(NSError(domain: NSURLErrorDomain, code: 400, userInfo: createUserInfo(102, 463)).isExpiredToken)
-        XCTAssertTrue(NSError(domain: NSURLErrorDomain, code: 400, userInfo: createUserInfo(102, 467)).isExpiredToken)
+        XCTAssertTrue(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: createUserInfo(102, nil)).isExpiredToken)
+        XCTAssertTrue(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: createUserInfo(102, 463)).isExpiredToken)
+        XCTAssertTrue(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: createUserInfo(102, 467)).isExpiredToken)
 
-        XCTAssertFalse(NSError(domain: NSURLErrorDomain, code: 400, userInfo: createUserInfo(10, nil)).isExpiredToken)
-        XCTAssertFalse(NSError(domain: NSURLErrorDomain, code: 400, userInfo: createUserInfo(102, 462)).isExpiredToken)
-        XCTAssertFalse(NSError(domain: NSURLErrorDomain, code: 400, userInfo: createUserInfo(102, 465)).isExpiredToken)
+        XCTAssertFalse(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: createUserInfo(10, nil)).isExpiredToken)
+        XCTAssertFalse(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: createUserInfo(102, 462)).isExpiredToken)
+        XCTAssertFalse(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: createUserInfo(102, 465)).isExpiredToken)
     }
 
 	func testIgnoreOtherErrors() {
@@ -57,9 +71,9 @@ class OAuthSwiftErrorTest: XCTestCase {
 		]
 
 		// assert
-		XCTAssertFalse(NSError(domain: NSURLErrorDomain, code: 401, userInfo: userInfo).isExpiredToken)
-		XCTAssertFalse(NSError(domain: NSURLErrorDomain, code: 400, userInfo: userInfo).isExpiredToken)
-		XCTAssertFalse(NSError(domain: NSURLErrorDomain, code: 500, userInfo: userInfo).isExpiredToken)
+		XCTAssertFalse(NSError(domain: OAuthSwiftError.Domain, code: 401, userInfo: userInfo).isExpiredToken)
+		XCTAssertFalse(NSError(domain: OAuthSwiftError.Domain, code: 400, userInfo: userInfo).isExpiredToken)
+		XCTAssertFalse(NSError(domain: OAuthSwiftError.Domain, code: 500, userInfo: userInfo).isExpiredToken)
 	}
     
     
